@@ -1,0 +1,26 @@
+[project]
+name = "tech-europe-hack-25"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Your Name",email = "you@example.com"}
+]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pandas (>=2.3.1,<3.0.0)",
+    "openai (>=1.97.0,<2.0.0)",
+    "load-dotenv (>=0.1.0,<0.2.0)",
+    "pydantic (>=2.11.7,<3.0.0)",
+    "pandarallel (>=1.6.5,<2.0.0)",
+    "ipywidgets (>=8.1.7,<9.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+
