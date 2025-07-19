@@ -7,9 +7,9 @@ class Classification(str, Enum):
     Represents the possible classifications for GDPR paragraphs.
     Using str as a base ensures the enum values are strings.
     """
-    LOW_RISK = "Low risk"
-    MEDIUM_RISK = "Medium risk"
-    HIGH_RISK = "High risk"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
 
 class GdprParagraph(BaseModel):
     """
@@ -19,6 +19,7 @@ class GdprParagraph(BaseModel):
     name: str = Field(..., description="The name or identifier of the GDPR paragraph (e.g., 'Article 6').")
     description: str = Field(..., description="A short description of the paragraph.")
     classification: Classification = Field(..., description="The classification of the GDPR paragraph (e.g., 'Lawful Basis', 'Data Subject Rights').")
+    summary: str = Field(..., description="A summary of the paragraph")
     reason: str = Field(..., description="The reason or justification for the given classification.")
 
 class GdprParagraphList(BaseModel):

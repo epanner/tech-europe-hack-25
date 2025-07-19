@@ -1,3 +1,4 @@
+import os
 from openai import OpenAI
 from models import GdprParagraphList
 
@@ -9,8 +10,10 @@ class EvaluationService:
 
 
     def get_evaluation(self, case_description):
+
+        articles = os.getenv("ARTICLES_TO_CHECK").split(",")
         try:
-            prompt = f"""Our company had a data breach. Here's what happend: {case_description}. Please calculate the probability of us violating the following GDPR articles: 5 & 10 and the approximate fine that we can expect. For each paragraph, assign the fitting classificcation. """
+            prompt = f"""Our company had a data breach. Here's what happend: {case_description}. Please calculate the probability of us violating the following GDPR articles: {articles} and the approximate fine that we can expect. For each paragraph, assign the fitting classificcation. """
 
             response = self.openai.responses.parse(
                 model="gpt-4o-2024-08-06",

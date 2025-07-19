@@ -17,7 +17,6 @@ case_evaluation = api_client.get_evaluation(case_description)
 
 print(case_evaluation)
 
-
 def create_app():
     app = Flask(__name__)
     app.register_blueprint(evaluate_bp)
