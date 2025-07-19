@@ -2,6 +2,9 @@ import os
 from openai import OpenAI
 from models import GdprParagraphList
 
+from dotenv import load_dotenv
+load_dotenv()
+
 class EvaluationService:
     def __init__(self, api_key):
         if not api_key:
@@ -11,7 +14,7 @@ class EvaluationService:
 
     def get_evaluation(self, case_description):
 
-        articles = os.getenv("ARTICLES_TO_CHECK").split(",")
+        articles ="Art. 5 and 10 GDPR"
         try:
             prompt = f"""Our company had a data breach. Here's what happend: {case_description}. Please calculate the probability of us violating the following GDPR articles: {articles} and the approximate fine that we can expect. For each paragraph, assign the fitting classificcation. """
 
