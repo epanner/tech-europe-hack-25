@@ -15,9 +15,10 @@ interface AIBreachAnalyzerProps {
     };
   }) => void;
   initialDescription?: string;
+  setConversationSummary: (summary: string) => void;
 }
 
-export function AIBreachAnalyzer({ onAnalysisComplete, initialDescription = "" }: AIBreachAnalyzerProps) {
+export function AIBreachAnalyzer({ onAnalysisComplete, initialDescription = "", setConversationSummary }: AIBreachAnalyzerProps) {
   const [description, setDescription] = useState(initialDescription);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [caseSummary, setCaseSummary] = useState("");
@@ -161,6 +162,7 @@ export function AIBreachAnalyzer({ onAnalysisComplete, initialDescription = "" }
     const updatedDescription = `${caseSummary}\n\nAdditional details: ${additionalInput}`;
     setDescription(updatedDescription);
     setCaseSummary(updatedDescription);
+    setConversationSummary(updatedDescription);
     setAdditionalInput("");
     
     toast.success("Additional details added. Re-analyzing case...");

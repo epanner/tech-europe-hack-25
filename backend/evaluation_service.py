@@ -14,7 +14,7 @@ class EvaluationService:
 
     def get_evaluation(self, case_description):
 
-        articles ="Art. 5 and 10 GDPR"
+        articles ="Art. 5, 6, 10, 13, 17, 25 , 32, 33, 34, 35 and 44 of the GDPR"
         try:
             prompt = f"""Our company had a data breach. Here's what happend: {case_description}. Please calculate the probability of us violating the following GDPR articles: {articles} and the approximate fine that we can expect. For each paragraph, assign the fitting classificcation. """
 

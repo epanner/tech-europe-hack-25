@@ -1,8 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Mic, MicOff, Shield, MessageSquare } from "lucide-react";
+import { Mic, MicOff, Shield } from "lucide-react";
 import { toast } from "sonner";
 
 interface VoiceAgentProps {
@@ -10,89 +9,142 @@ interface VoiceAgentProps {
 }
 
 export function VoiceAgent({ onConversationComplete }: VoiceAgentProps) {
-  const [apiKey, setApiKey] = useState("");
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [isTranscribing, setIsTranscribing] = useState(false);
   const [conversationSummary, setConversationSummary] = useState("");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState<string | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
-  // Load API key from localStorage on component mount
+  // Get API key from env safely
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('elevenlabs-api-key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-      setShowApiKeyInput(false);
+    try {
+      const key = import.meta.env.VITE_ELEVENLABS_API_KEY;
+      setApiKey(key || null);
+    } catch (err) {
+      console.error("Error accessing environment variable:", err);
+      setApiKey(null);
     }
   }, []);
 
-  const saveApiKey = () => {
-    if (apiKey.trim()) {
-      localStorage.setItem('elevenlabs-api-key', apiKey);
-      setShowApiKeyInput(false);
-      toast.success("API key saved successfully");
+  const startRecording = async () => {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream, { mimeType: 'audio/wav' });
+      audioChunksRef.current = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) audioChunksRef.current.push(event.data);
+      };
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        await transcribeAudio(audioBlob);
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setIsRecording(true);
+    } catch (err: any) {
+      // Fallback to default format if wav is not supported
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        audioChunksRef.current = [];
+        recorder.ondataavailable = (event) => {
+          if (event.data.size > 0) audioChunksRef.current.push(event.data);
+        };
+        recorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp4' });
+          await transcribeAudio(audioBlob);
+        };
+        mediaRecorderRef.current = recorder;
+        recorder.start();
+        setIsRecording(true);
+      } catch (fallbackErr: any) {
+        setError("Microphone access denied or not available.");
+      }
     }
   };
 
-  const simulateVoiceConversation = async () => {
-    if (!apiKey.trim()) {
-      toast.error("Please enter your ElevenLabs API key");
-      return;
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
     }
-
-    // Save API key for future use
-    localStorage.setItem('elevenlabs-api-key', apiKey);
-    
-    setIsConnecting(true);
-    setShowApiKeyInput(false);
-    
-    // Simulate connection delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    setIsConnecting(false);
-    setIsConnected(true);
-    setIsListening(true);
-    
-    toast.success("Voice agent connected. Start describing your data breach case.");
-    
-    // Simulate conversation duration
-    await new Promise(resolve => setTimeout(resolve, 8000));
-    
-    // Simulate conversation end
-    const mockSummary = `Data breach incident involving customer database compromise. Approximately 15,000 customer records were potentially accessed including names, email addresses, and encrypted payment information. The breach was discovered through automated monitoring systems and contained within 48 hours. Security measures included immediate password resets and system patches. No sensitive personal data like SSNs or full credit card numbers were exposed. Company has implemented additional encryption and monitoring protocols.`;
-    
-    setConversationSummary(mockSummary);
-    setIsListening(false);
-    
-    toast.success("Conversation completed. Analyzing your case...");
-    
-    // Brief delay before transitioning
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    onConversationComplete(mockSummary);
   };
 
-  const skipToTextInput = () => {
-    onConversationComplete("");
-  };
-
-  const useDemoInput = () => {
-    const demoSummary = `Data breach incident involving customer database compromise. Approximately 15,000 customer records were potentially accessed including names, email addresses, and encrypted payment information. The breach was discovered through automated monitoring systems and contained within 48 hours. Security measures included immediate password resets and system patches. No sensitive personal data like SSNs or full credit card numbers were exposed. Company has implemented additional encryption and monitoring protocols.`;
-    
-    toast.success("Demo input provided. Analyzing case...");
-    
-    setTimeout(() => {
-      onConversationComplete(demoSummary);
-    }, 1000);
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    setError(null);
+    try {
+      if (!apiKey) {
+        setError("ElevenLabs API key is not set in the environment.");
+        setIsTranscribing(false);
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('file', audioBlob, 'recording.wav');
+      formData.append('model_id', 'scribe_v1_experimental');
+      formData.append('optimize_streaming_latency', '0');
+      
+      const response = await fetch('https://api.elevenlabs.io/v1/speech-to-text', {
+        method: 'POST',
+        headers: {
+          'xi-api-key': apiKey,
+          // Don't set Content-Type header - let the browser set it with boundary for FormData
+        },
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('ElevenLabs API error:', response.status, errorText);
+        setError(`Transcription failed (${response.status}). Check your API key and audio format.`);
+        setIsTranscribing(false);
+        return;
+      }
+      
+      const data = await response.json();
+      if (data && data.text) {
+        // Clean the transcript by removing sound descriptions
+        let cleanText = data.text;
+        
+        // Remove common sound descriptions
+        const soundPatterns = [
+          /\[.*?\]/g, // Remove anything in brackets
+          /\(.*?\)/g, // Remove anything in parentheses
+          /\b(um|uh|ah|er|hmm|mm|mhm|uh-huh|uh-uh)\b/gi, // Remove filler words
+          /\b(silence|background noise|music|sound|noise|static|breathing|coughing|sneezing|clearing throat)\b/gi, // Remove sound descriptions
+        ];
+        
+        soundPatterns.forEach(pattern => {
+          cleanText = cleanText.replace(pattern, '');
+        });
+        
+        // Clean up extra whitespace
+        cleanText = cleanText.replace(/\s+/g, ' ').trim();
+        
+        setConversationSummary(cleanText);
+        onConversationComplete(cleanText);
+        toast.success("Transcription complete!");
+      } else {
+        setError("No transcript returned from ElevenLabs.");
+      }
+    } catch (err: any) {
+      console.error('Transcription error:', err);
+      setError("Error during transcription.");
+    } finally {
+      setIsTranscribing(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-background flex items-center justify-center p-6 z-50">
       <div className="w-full max-w-2xl">
-        {/* Header */}
         <div className="text-center mb-12">
           <div className="flex items-center justify-center gap-4 mb-6">
-            <Shield className="h-16 w-16 text-primary" />
+            <img src="/logo.png" alt="Data Guard Pro Logo" className="h-16 w-auto" />
             <div>
               <h1 className="text-4xl font-bold text-foreground mb-2">DataGuard Pro</h1>
               <p className="text-xl text-muted-foreground">AI-Powered Data Breach Assistant</p>
@@ -102,157 +154,32 @@ export function VoiceAgent({ onConversationComplete }: VoiceAgentProps) {
             Describe your data breach case to our AI voice agent for immediate analysis and compliance guidance.
           </p>
         </div>
-
-        {/* Main Interface */}
         <Card className="bg-card border-border shadow-2xl p-10">
-          {showApiKeyInput && !isConnected ? (
-            <div className="space-y-8">
-              <div className="text-center">
-                <h2 className="text-2xl font-semibold text-foreground mb-4">Connect Voice Agent</h2>
-                <p className="text-muted-foreground mb-6">
-                  Enter your ElevenLabs API key to enable voice interaction, or skip to use text input.
-                </p>
+          <div className="flex flex-col items-center gap-6">
+            {!isRecording && !isTranscribing && (
+              <Button onClick={startRecording} className="w-48 h-14 text-lg flex items-center justify-center">
+                <Mic className="h-6 w-6 mr-2" /> Start Recording
+              </Button>
+            )}
+            {isRecording && (
+              <Button onClick={stopRecording} className="w-48 h-14 text-lg flex items-center justify-center bg-danger hover:bg-danger/90">
+                <MicOff className="h-6 w-6 mr-2" /> Stop Recording
+              </Button>
+            )}
+            {isTranscribing && (
+              <div className="text-primary text-lg flex items-center gap-2">
+                <span className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></span>
+                Transcribing...
               </div>
-              
-              <div className="space-y-4">
-                <Input
-                  type="password"
-                  placeholder="Enter your ElevenLabs API key..."
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  className="text-center text-lg py-6"
-                />
-                
-                <div className="flex gap-4">
-                  <Button 
-                    onClick={simulateVoiceConversation}
-                    disabled={!apiKey.trim() || isConnecting}
-                    className="flex-1 py-6 text-lg"
-                    size="lg"
-                  >
-                    {isConnecting ? (
-                      <>
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                        Connecting...
-                      </>
-                    ) : (
-                      <>
-                        <Mic className="h-5 w-5 mr-3" />
-                        Start Voice Session
-                      </>
-                    )}
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    onClick={skipToTextInput}
-                    className="py-6 text-lg"
-                    size="lg"
-                  >
-                    <MessageSquare className="h-5 w-5 mr-3" />
-                    Skip to Text
-                  </Button>
-                </div>
+            )}
+            {error && <div className="text-danger text-sm mt-2">{error}</div>}
+            {conversationSummary && (
+              <div className="bg-muted/50 rounded-lg p-6 border border-border mt-4 text-left">
+                <h3 className="text-lg font-medium text-foreground mb-2">Transcript</h3>
+                <p className="text-foreground/90 text-base leading-relaxed whitespace-pre-line">{conversationSummary}</p>
               </div>
-              
-              <div className="text-center text-sm text-muted-foreground">
-                <p>Need an API key? Visit <a href="https://elevenlabs.io" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">ElevenLabs.io</a></p>
-              </div>
-            </div>
-          ) : !showApiKeyInput && !isConnected ? (
-            <div className="space-y-6">
-              <div className="text-center">
-                <h2 className="text-2xl font-semibold text-foreground mb-4">Ready to Connect</h2>
-                <p className="text-muted-foreground mb-6">
-                  Start your voice session or use demo input for testing.
-                </p>
-              </div>
-              
-              <div className="space-y-3">
-                <Button 
-                  onClick={simulateVoiceConversation}
-                  disabled={isConnecting}
-                  className="w-full py-6 text-lg"
-                  size="lg"
-                >
-                  {isConnecting ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-3"></div>
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="h-5 w-5 mr-3" />
-                      Start Voice Session
-                    </>
-                  )}
-                </Button>
-                
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    onClick={useDemoInput}
-                    className="flex-1 py-4 text-base"
-                    size="lg"
-                  >
-                    Demo Input
-                  </Button>
-                  
-                  <Button 
-                    variant="outline" 
-                    onClick={skipToTextInput}
-                    className="flex-1 py-4 text-base"
-                    size="lg"
-                  >
-                    <MessageSquare className="h-4 w-4 mr-2" />
-                    Skip to Text
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ) : isConnected ? (
-            <div className="text-center space-y-8">
-              <div className="space-y-4">
-                <div className={`w-32 h-32 mx-auto rounded-full border-4 ${isListening ? 'border-primary animate-pulse bg-primary/20' : 'border-muted bg-muted/20'} flex items-center justify-center`}>
-                  {isListening ? (
-                    <Mic className="h-12 w-12 text-primary" />
-                  ) : (
-                    <MicOff className="h-12 w-12 text-muted-foreground" />
-                  )}
-                </div>
-                
-                <h2 className="text-2xl font-semibold text-foreground">
-                  {isListening ? "Listening..." : "Processing..."}
-                </h2>
-                
-                <p className="text-muted-foreground max-w-md mx-auto">
-                  {isListening 
-                    ? "Please describe your data breach incident in detail. Include affected data types, timeline, and any security measures taken."
-                    : "Analyzing your case and preparing compliance assessment..."
-                  }
-                </p>
-              </div>
-              
-              {isListening && (
-                <>
-                  <div className="flex justify-center space-x-2 mb-6">
-                    <div className="w-2 h-8 bg-primary/60 rounded-full animate-pulse"></div>
-                    <div className="w-2 h-12 bg-primary/80 rounded-full animate-pulse" style={{ animationDelay: '0.1s' }}></div>
-                    <div className="w-2 h-6 bg-primary/60 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-                    <div className="w-2 h-10 bg-primary/70 rounded-full animate-pulse" style={{ animationDelay: '0.3s' }}></div>
-                  </div>
-                  
-                  <Button 
-                    variant="outline" 
-                    onClick={useDemoInput}
-                    className="mx-auto block"
-                  >
-                    Demo Input
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : null}
+            )}
+          </div>
         </Card>
       </div>
     </div>

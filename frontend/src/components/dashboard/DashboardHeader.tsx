@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Shield, Bell, Settings, User } from "lucide-react";
+import { Bell, Settings, User } from "lucide-react";
 
 export function DashboardHeader() {
   return (
@@ -8,10 +8,10 @@ export function DashboardHeader() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <Shield className="h-9 w-9 text-primary" />
+              <img src="/logo.png" alt="Data Guard Pro Logo" className="h-20 w-400 mr-3" />
               <div>
-                <h1 className="text-2xl font-bold text-foreground">DataGuard Pro</h1>
-                <p className="text-sm text-muted-foreground tracking-wide">Data Protection Officer Dashboard</p>
+                <h1 className="text-2xl font-bold text-foreground">Data Breach Assistant</h1>
+                <p className="text-sm text-muted-foreground tracking-wide">Supporting in GDPR compliance assessments.</p>
               </div>
             </div>
           </div>

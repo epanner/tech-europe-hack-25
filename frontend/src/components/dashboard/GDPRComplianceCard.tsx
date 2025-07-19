@@ -23,9 +23,9 @@ const classificationColor: ClassificationColor = {
 };
 
 const classificationLabel: ClassificationColor = {
-  high: "High Risk",
-  medium: "Medium Risk",
-  low: "Low Risk"
+  high: "Violation",
+  medium: "Risk",
+  low: "Compliant"
 };
 
 export function GDPRComplianceCard({ caseDescription }: { caseDescription: string }) {
@@ -91,11 +91,13 @@ export function GDPRComplianceCard({ caseDescription }: { caseDescription: strin
               >
                 <AccordionTrigger className="hover:no-underline py-3">
                   <div className="flex items-center justify-between w-full pr-4">
-                    <div className="text-left">
+                    <div className="text-left flex-1">
                       <div className="font-medium text-foreground">{article.name}</div>
-                      <div className="text-sm text-muted-foreground">{article.summary}</div>
+                      <div className="text-sm text-muted-foreground mt-1">{article.summary}</div>
                     </div>
-                    <Badge className={`${classificationColor[article.classification]} text-xs`}>{classificationLabel[article.classification]}</Badge>
+                    <div className="flex items-center ml-8">
+                      <Badge className={`${classificationColor[article.classification]} text-xs font-semibold w-28 h-7 flex items-center justify-center rounded-md`}>{classificationLabel[article.classification]}</Badge>
+                    </div>
                   </div>
                 </AccordionTrigger>
                 <AccordionContent className="pb-4">

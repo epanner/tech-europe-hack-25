@@ -34,6 +34,7 @@ const Index = () => {
           {/* AI Breach Analyzer */}
           <div className="mb-12">
             <AIBreachAnalyzer 
+              setConversationSummary={setConversationSummary}
               onAnalysisComplete={handleAnalysisComplete} 
               initialDescription={conversationSummary}
             />
