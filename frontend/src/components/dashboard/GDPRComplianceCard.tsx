@@ -33,31 +33,39 @@ export function GDPRComplianceCard({ caseDescription }: { caseDescription: strin
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!caseDescription) return;
+  const fetchGdprAssessment = async (description: string) => {
     setLoading(true);
     setError(null);
-    console.log("Fetching GDPR compliance assessment for case:", caseDescription);
-    fetch("http://localhost:5000/api/evaluate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ case_description: caseDescription })
-    })
-      .then(async (res) => {
-        console.log("Response status:", res.status);
-        if (!res.ok) {
-          console.log(res);
-        };
-        const data = await res.json();
-        setGdprArticles(data.paragraphs || []);
-      })
-      .catch((err) => {
-        console.log("Error fetching GDPR compliance assessment:");
-        console.error(err);
-        console.log(err);
-        setError(err.message)
-      })
-      .finally(() => setLoading(false));
+    console.log("Fetching GDPR compliance assessment for case:", description);
+    try {
+      const response = await fetch("http://127.0.0.1:5000/api/evaluate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ case_description: description })
+      });
+      console.log("Response status:", response.status);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData as any);
+      }
+      const data = await response.json();
+      setGdprArticles((data as any).paragraphs || []);
+    } catch (error: any) {
+      console.error("Error fetching GDPR compliance assessment:");
+      console.error(error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!caseDescription) {
+      setGdprArticles([]);
+      return;
+    }
+    
+    fetchGdprAssessment(caseDescription);
   }, [caseDescription]);
 
   return (
