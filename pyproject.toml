@@ -13,7 +13,10 @@ dependencies = [
     "load-dotenv (>=0.1.0,<0.2.0)",
     "pydantic (>=2.11.7,<3.0.0)",
     "pandarallel (>=1.6.5,<2.0.0)",
-    "ipywidgets (>=8.1.7,<9.0.0)"
+    "ipywidgets (>=8.1.7,<9.0.0)",
+    "pypdf2 (>=3.0.1,<4.0.0)",
+    "dotenv (>=0.9.9,<0.10.0)",
+    "python-dotenv (>=1.1.1,<2.0.0)"
 ]
 
 

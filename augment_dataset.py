@@ -17,6 +17,7 @@ class GDPRViolationClassification(BaseModel):
 # === SETTINGS ===
 openai.api_key = os.getenv("OPENAI_KEY")
 
+
 # === STEP 1: Read PDF text ===
 def extract_text_from_pdf(pdf_file_name):
     text = ""
@@ -31,7 +32,7 @@ def extract_text_from_pdf(pdf_file_name):
                     text += extracted_text
     return text
 
-def classify_gdpr_violation(prompt):
+def classify_gdpr_violation(prompt) -> GDPRViolationClassification:
     response = openai.responses.parse(
                 model="gpt-4o-2024-08-06",
                 input=[
@@ -40,7 +41,49 @@ def classify_gdpr_violation(prompt):
                 ],
                 text_format=GDPRViolationClassification,
             )
-    print(response.output_parsed)
+    return response.output_parsed
+
+def get_gdpr_classifications(row):
+    file_name = row['verdict_link'].split('/')[-1]
+    if file_name.split('.')[-1] == "pdf":
+        spanish_text = extract_text_from_pdf(file_name)
+        if spanish_text:
+            prompt = f"""
+            Analyze the following case report and assign one label from each of the following four GDPR violation characteristics.
+
+            The 4 characteristics are:
+            1. Lawfulness of Processing
+                - lawful_and_appropriate_basis
+                - lawful_but_principle_violation
+                - no_valid_basis
+                - exempt_or_restricted
+
+            2. Data Subject Rights Compliance
+                - full_compliance
+                - partial_compliance
+                - non_compliance
+                - not_triggered
+
+            3. Risk Management and Safeguards
+                - proactive_safeguards
+                - reactive_only
+                - insufficient_protection
+                - not_applicable
+
+            4. Accountability and Governance
+                - fully_accountable
+                - partially_accountable
+                - not_accountable
+                - not_required
+
+            ## Case:
+            {spanish_text}
+            """
+            labels = classify_gdpr_violation(prompt)
+            return (labels.lawfulness_of_processing, labels.data_subject_rights_compliance, labels.risk_management_and_safeguards, labels.accountability_and_governance)
+    return (None, None, None, None)
+
+
 
 # === MAIN PIPELINE ===
 def main():
