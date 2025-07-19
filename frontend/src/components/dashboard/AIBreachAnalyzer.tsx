@@ -45,16 +45,76 @@ export function AIBreachAnalyzer({ onAnalysisComplete, initialDescription = "" }
       
       // Mock analysis results based on description
       const mockGDPRAnalysis = [
-        { article: "Art. 5", status: description.toLowerCase().includes("consent") ? "compliant" : "warning" },
-        { article: "Art. 6", status: description.toLowerCase().includes("legal basis") ? "compliant" : "violation" },
-        { article: "Art. 13", status: "warning" },
-        { article: "Art. 17", status: description.toLowerCase().includes("deletion") ? "compliant" : "violation" },
-        { article: "Art. 25", status: "warning" },
-        { article: "Art. 32", status: description.toLowerCase().includes("encryption") ? "compliant" : "violation" },
-        { article: "Art. 33", status: description.toLowerCase().includes("72 hours") ? "compliant" : "violation" },
-        { article: "Art. 34", status: "warning" },
-        { article: "Art. 35", status: "compliant" },
-        { article: "Art. 44", status: description.toLowerCase().includes("international") ? "warning" : "compliant" }
+        {
+          classification: description.toLowerCase().includes("consent") ? "low" : "medium",
+          description: "Lawfulness, fairness, and transparency.",
+          name: "Article 5",
+          reason: "A breach might indicate a lack of transparency or fairness in data processing, which is a low risk if other controls are in place.",
+          summary: "Establishes principles for lawful, fair, and transparent processing of personal data."
+        },
+        {
+          classification: description.toLowerCase().includes("legal basis") ? "low" : "high",
+          description: "Lawfulness of processing.",
+          name: "Article 6",
+          reason: "A breach might imply that data processing wasn't lawful or secured, which can signify a high risk of not having a lawful basis for processing data.",
+          summary: "Establishes the lawful bases for processing personal data, including consent and contracts."
+        },
+        {
+          classification: "low",
+          description: "Transparency requirements.",
+          name: "Article 13",
+          reason: "A breach here may mean data subjects are not properly informed, but the risk is low if other requirements are met.",
+          summary: "Requires providing information to data subjects about processing activities."
+        },
+        {
+          classification: description.toLowerCase().includes("deletion") ? "low" : "high",
+          description: "Right to be forgotten.",
+          name: "Article 17",
+          reason: "A breach may mean erasure requests are not honored, which is a high risk for non-compliance.",
+          summary: "Grants individuals the right to have their personal data erased under certain conditions."
+        },
+        {
+          classification: "medium",
+          description: "Privacy by design and default.",
+          name: "Article 25",
+          reason: "A breach may indicate insufficient privacy measures in system design, a medium risk for ongoing compliance.",
+          summary: "Requires data protection measures to be integrated into processing activities and systems."
+        },
+        {
+          classification: description.toLowerCase().includes("encryption") ? "low" : "high",
+          description: "Technical and organizational measures.",
+          name: "Article 32",
+          reason: "A breach may mean security controls are lacking, but if other controls are strong, risk is low.",
+          summary: "Mandates appropriate security measures for processing personal data."
+        },
+        {
+          classification: description.toLowerCase().includes("72 hours") ? "low" : "high",
+          description: "Notification to supervisory authority.",
+          name: "Article 33",
+          reason: "A breach may not be reported in time, which is a high risk for regulatory penalties.",
+          summary: "Requires notification of personal data breaches to authorities within 72 hours."
+        },
+        {
+          classification: "high",
+          description: "High-risk breach communication.",
+          name: "Article 34",
+          reason: "A breach may not be communicated to data subjects, which is a high risk for trust and compliance.",
+          summary: "Requires communication of high-risk breaches to affected data subjects."
+        },
+        {
+          classification: "low",
+          description: "DPIA requirements.",
+          name: "Article 35",
+          reason: "A breach may mean DPIAs are not conducted, but risk is low if other controls are strong.",
+          summary: "Requires Data Protection Impact Assessments for high-risk processing activities."
+        },
+        {
+          classification: description.toLowerCase().includes("international") ? "medium" : "low",
+          description: "Cross-border data transfers.",
+          name: "Article 44",
+          reason: "A breach may mean international transfers are not properly safeguarded, a medium risk for compliance.",
+          summary: "Regulates transfers of personal data outside the EU/EEA."
+        }
       ];
 
       const estimatedFine = description.toLowerCase().includes("personal data") 

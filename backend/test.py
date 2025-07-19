@@ -2,9 +2,10 @@ import os
 
 from flask import Flask
 from evaluation_service import EvaluationService
-# from api.evaluation import evaluate_bp
 from api.evaluation import evaluate_bp
 from dotenv import load_dotenv
+from flask_cors import CORS  # Add this import
+
 print("-----   Starting test   -----")
 
 load_dotenv()
@@ -21,6 +22,7 @@ print(case_evaluation)
 
 def create_app():
     app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": "*"}})  # Enable CORS for all routes and origins
     app.register_blueprint(evaluate_bp)
     return app
 
