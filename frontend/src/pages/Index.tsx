@@ -15,6 +15,8 @@ const Index = () => {
   const [caseClassification, setCaseClassification] = useState<any>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
+  const [similarCases, setSimilarCases] = useState<any[]>([]);
+
   const { startConversation, sendMessage } = useCaseGathering();
 
   const [analyticConversation, setAnalyticConversation] = useState<string[]>([]);
@@ -117,7 +119,8 @@ const Index = () => {
           
           {/* Breach Impact Predictor */}
           <div className="space-y-6">
-            <BreachImpactPredictor />
+            <BreachImpactPredictor 
+            similarCases={similarCases} setSimilarCases={setSimilarCases} />
           </div>
         </div>
       </main>
