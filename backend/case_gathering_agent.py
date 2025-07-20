@@ -400,57 +400,102 @@ This classification is based on the information provided during our conversation
             
         return self.system_instructions + context
     
-    def _make_forced_classification(self, conversation_text: str) -> dict:
-        """Make a classification based on conversation history when iteration limit is reached"""
-        # Default classifications - can be improved with better text analysis
-        classification = {
-            "case_description": "Data breach incident based on conversation history",
-            "lawfulness_of_processing": "lawful_and_appropriate_basis",  # Default assumption
-            "data_subject_rights_compliance": "partial_compliance",  # Conservative assumption
-            "risk_management_and_safeguards": "insufficient_protection",  # Common case
-            "accountability_and_governance": "partially_accountable"  # Conservative assumption
-        }
-        
-        # Simple keyword-based classification improvements
-        text_lower = conversation_text.lower()
-        
-        # Analyze lawfulness
-        if any(word in text_lower for word in ["no basis", "unlawful", "no legal basis", "unauthorized"]):
-            classification["lawfulness_of_processing"] = "no_valid_basis"
-        elif any(word in text_lower for word in ["violation", "unfair", "not transparent"]):
-            classification["lawfulness_of_processing"] = "lawful_but_principle_violation"
-        elif any(word in text_lower for word in ["legitimate interest", "consent", "contract", "legal basis"]):
-            classification["lawfulness_of_processing"] = "lawful_and_appropriate_basis"
+    async def _make_forced_classification(self, conversation_text: str) -> dict:
+        """Make a classification based on conversation history using OpenAI structured output"""
+        try:
+            # Create a prompt for classification analysis
+            classification_prompt = f"""
+            Based on the following conversation about a GDPR breach incident, please provide a comprehensive classification across the 4 key dimensions.
+
+            Conversation History:
+            {conversation_text}
+
+            Please analyze the conversation and classify the breach case across these dimensions:
+
+            1. **Lawfulness of Processing** - Choose one:
+               - lawful_and_appropriate_basis: Processing had clear legal basis and was appropriate
+               - lawful_but_principle_violation: Legal basis existed but violated GDPR principles
+               - no_valid_basis: No valid legal basis for processing
+               - exempt_or_restricted: Processing was exempt from GDPR or had restricted applicability
+
+            2. **Data Subject Rights Compliance** - Choose one:
+               - full_compliance: All relevant data subject rights were properly handled
+               - partial_compliance: Some rights were handled but with deficiencies
+               - non_compliance: Failed to respect data subject rights
+               - not_triggered: No data subject rights were triggered in this case
+
+            3. **Risk Management and Safeguards** - Choose one:
+               - proactive_safeguards: Had comprehensive preventive security measures
+               - reactive_only: Only responded after incident occurred
+               - insufficient_protection: Inadequate security measures in place
+               - not_applicable: Risk management not relevant to this case
+
+            4. **Accountability and Governance** - Choose one:
+               - fully_accountable: Complete documentation, policies, and governance
+               - partially_accountable: Some accountability measures but gaps exist
+               - not_accountable: Failed to demonstrate compliance accountability
+               - not_required: Accountability requirements didn't apply
+
+            Provide a comprehensive case description summarizing the incident and your classification rationale.
+            """
+
+            # Use OpenAI with structured output to ensure proper formatting
+            response = await self.client.chat.completions.create(
+                model="gpt-4o-2024-08-06",
+                messages=[
+                    {"role": "system", "content": "You are an expert GDPR case analysis assistant. Analyze the conversation history and provide a structured classification of the breach incident based on the 4 key dimensions. Make reasonable inferences where information is incomplete."},
+                    {"role": "user", "content": classification_prompt}
+                ],
+                response_format={
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "breach_classification",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "case_description": {
+                                    "type": "string",
+                                    "description": "Complete description of the breach case based on conversation"
+                                },
+                                "lawfulness_of_processing": {
+                                    "type": "string",
+                                    "enum": ["lawful_and_appropriate_basis", "lawful_but_principle_violation", "no_valid_basis", "exempt_or_restricted"],
+                                    "description": "Classification for lawfulness of processing"
+                                },
+                                "data_subject_rights_compliance": {
+                                    "type": "string", 
+                                    "enum": ["full_compliance", "partial_compliance", "non_compliance", "not_triggered"],
+                                    "description": "Classification for data subject rights compliance"
+                                },
+                                "risk_management_and_safeguards": {
+                                    "type": "string",
+                                    "enum": ["proactive_safeguards", "reactive_only", "insufficient_protection", "not_applicable"],
+                                    "description": "Classification for risk management and safeguards"
+                                },
+                                "accountability_and_governance": {
+                                    "type": "string",
+                                    "enum": ["fully_accountable", "partially_accountable", "not_accountable", "not_required"],
+                                    "description": "Classification for accountability and governance"
+                                }
+                            },
+                            "required": ["case_description", "lawfulness_of_processing", "data_subject_rights_compliance", "risk_management_and_safeguards", "accountability_and_governance"],
+                            "additionalProperties": False
+                        }
+                    }
+                }
+            )
             
-        # Analyze data subject rights
-        if any(word in text_lower for word in ["notified within", "contacted subjects", "informed customers"]):
-            classification["data_subject_rights_compliance"] = "full_compliance"
-        elif any(word in text_lower for word in ["failed to notify", "didn't inform", "no notification"]):
-            classification["data_subject_rights_compliance"] = "non_compliance"
-        elif any(word in text_lower for word in ["no rights triggered", "not applicable"]):
-            classification["data_subject_rights_compliance"] = "not_triggered"
+            # Parse the structured response
+            classification_data = json.loads(response.choices[0].message.content)
+            return classification_data
             
-        # Analyze security measures
-        if any(word in text_lower for word in ["comprehensive security", "advanced protection", "multiple safeguards"]):
-            classification["risk_management_and_safeguards"] = "proactive_safeguards"
-        elif any(word in text_lower for word in ["responded after", "reactive", "after the fact"]):
-            classification["risk_management_and_safeguards"] = "reactive_only"
-        elif any(word in text_lower for word in ["inadequate", "insufficient", "poor security", "no protection"]):
-            classification["risk_management_and_safeguards"] = "insufficient_protection"
-            
-        # Analyze governance
-        if any(word in text_lower for word in ["documented policies", "dpo", "data protection officer", "regular audits"]):
-            classification["accountability_and_governance"] = "fully_accountable"
-        elif any(word in text_lower for word in ["no policies", "no documentation", "no procedures"]):
-            classification["accountability_and_governance"] = "not_accountable"
-            
-        # Extract case description from conversation
-        user_messages = []
-        for line in conversation_text.split('\n'):
-            if line.startswith('user:'):
-                user_messages.append(line[5:].strip())
-        
-        if user_messages:
-            classification["case_description"] = " ".join(user_messages[:3])  # First 3 user messages
-        
-        return classification
+        except Exception as e:
+            print(f"Error in forced classification: {e}")
+            # Fallback to simple classification
+            return {
+                "case_description": "Data breach incident based on conversation history",
+                "lawfulness_of_processing": "lawful_and_appropriate_basis",
+                "data_subject_rights_compliance": "partial_compliance", 
+                "risk_management_and_safeguards": "insufficient_protection",
+                "accountability_and_governance": "partially_accountable"
+            }

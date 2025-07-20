@@ -11,12 +11,22 @@ interface StreamResponse {
   data: any;
 }
 
+interface Classifications {
+  lawfulness_of_processing: string;
+  data_subject_rights_compliance: string;
+  risk_management_and_safeguards: string;
+  accountability_and_governance: string;
+}
+
 interface CaseGatheringState {
   conversationId: string | null;
   messages: ConversationMessage[];
   isStreaming: boolean;
   isReadyToClassify: boolean;
   classification: any | null;
+  caseSummary: string | null;
+  classifications: Classifications | null;
+  conversationComplete: boolean;
   error: string | null;
   iterationCount: number;
   maxIterations: number;
@@ -29,6 +39,9 @@ export const useCaseGathering = () => {
     isStreaming: false,
     isReadyToClassify: false,
     classification: null,
+    caseSummary: null,
+    classifications: null,
+    conversationComplete: false,
     error: null,
     iterationCount: 0,
     maxIterations: 4,
@@ -42,14 +55,30 @@ export const useCaseGathering = () => {
       const response = await fetch(`http://127.0.0.1:5000/api/case-gathering/${conversationId}`);
       if (response.ok) {
         const data = await response.json();
-        if (data.classification) {
-          setState(prev => ({
-            ...prev,
+        
+        // Update state with comprehensive data from backend
+        setState(prev => ({
+          ...prev,
+          iterationCount: data.iteration_count || prev.iterationCount,
+          conversationComplete: data.conversation_complete || false,
+          classification: data.classification || prev.classification,
+          caseSummary: data.case_summary || prev.caseSummary,
+          classifications: data.classifications || prev.classifications,
+          isReadyToClassify: data.conversation_complete || prev.isReadyToClassify
+        }));
+        
+        // If conversation is complete, we have classification and summary
+        if (data.conversation_complete && data.classification) {
+          console.log('Case gathering completed with classification:', data.classification);
+          console.log('Case summary:', data.case_summary);
+          return {
             classification: data.classification,
-            isReadyToClassify: data.conversation_complete
-          }));
-          return data.classification;
+            caseSummary: data.case_summary,
+            classifications: data.classifications
+          };
         }
+        
+        return data.classification;
       }
     } catch (error) {
       console.warn('Failed to check classification status:', error);
@@ -67,7 +96,10 @@ export const useCaseGathering = () => {
         error: null,
         messages: [],
         isReadyToClassify: false,
-        classification: null
+        classification: null,
+        caseSummary: null,
+        classifications: null,
+        conversationComplete: false
       }));
 
       // Add initial user message if provided
@@ -160,6 +192,10 @@ export const useCaseGathering = () => {
                     isReadyToClassify: true,
                     classification: parsed.data
                   }));
+                  // Check status immediately when classification is complete
+                  if (currentConversationId) {
+                    checkClassificationStatus(currentConversationId);
+                  }
                   break;
 
                 case 'stream_end':
@@ -167,6 +203,10 @@ export const useCaseGathering = () => {
                     ...prev,
                     isStreaming: false
                   }));
+                  // Check classification status after stream ends
+                  if (currentConversationId) {
+                    await checkClassificationStatus(currentConversationId);
+                  }
                   return;
 
                 case 'error':
@@ -193,13 +233,6 @@ export const useCaseGathering = () => {
           isStreaming: false
         }));
       }
-    } finally {
-      // Always check classification status at the end of startConversation
-      setTimeout(async () => {
-        if (currentConversationId) {
-          await checkClassificationStatus(currentConversationId);
-        }
-      }, 100);
     }
   }, [checkClassificationStatus]);
 
@@ -297,6 +330,10 @@ export const useCaseGathering = () => {
                     isReadyToClassify: true,
                     classification: parsed.data
                   }));
+                  // Check status immediately when classification is complete
+                  if (currentConversationId) {
+                    checkClassificationStatus(currentConversationId);
+                  }
                   break;
 
                 case 'stream_end':
@@ -304,6 +341,10 @@ export const useCaseGathering = () => {
                     ...prev,
                     isStreaming: false
                   }));
+                  // Check classification status after stream ends
+                  if (currentConversationId) {
+                    await checkClassificationStatus(currentConversationId);
+                  }
                   return;
 
                 case 'error':
@@ -330,13 +371,6 @@ export const useCaseGathering = () => {
           isStreaming: false
         }));
       }
-    } finally {
-      // Always check classification status at the end of sendMessage
-      setTimeout(async () => {
-        if (currentConversationId) {
-          await checkClassificationStatus(currentConversationId);
-        }
-      }, 100);
     }
   }, [state.conversationId, state.isStreaming, checkClassificationStatus]);
 
@@ -358,6 +392,9 @@ export const useCaseGathering = () => {
       isStreaming: false,
       isReadyToClassify: false,
       classification: null,
+      caseSummary: null,
+      classifications: null,
+      conversationComplete: false,
       error: null,
       iterationCount: 0,
       maxIterations: 4,
