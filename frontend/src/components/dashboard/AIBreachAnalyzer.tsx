@@ -179,9 +179,9 @@ Status: Ready for detailed GDPR compliance analysis.`;
         setCaseSummary(shouldUseClassification ? classification.case_description : description);
       } else if (shouldUseClassification) {
         // Update the case summary to indicate analysis is complete
-        const updatedSummary = caseSummary + "\n\n=== AI IMPACT ANALYSIS COMPLETE ===";
-        setCaseSummary(updatedSummary);
-        setConversationSummary(updatedSummary);
+        // const updatedSummary = caseSummary + "\n\n=== AI IMPACT ANALYSIS COMPLETE ===";
+        // setCaseSummary(updatedSummary);
+        // setConversationSummary(updatedSummary);
       }
       setDescription("");
     } catch (error) {
