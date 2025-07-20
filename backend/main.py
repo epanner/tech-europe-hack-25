@@ -1,13 +1,14 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from .evaluation_service import EvaluationService
-from .case_gathering_agent import CaseGatheringAgent
+from evaluation_service import EvaluationService
+from case_gathering_agent import CaseGatheringAgent
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
 import json
 import sys
+import uvicorn
 from dotenv import load_dotenv
 
 # Add parent directory to path for imports
@@ -253,3 +254,7 @@ async def get_breach_classifications():
             "not_accountable", "not_required"
         ]
     }
+
+# Run the FastAPI app
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="127.0.0.1", port=5000, reload=True)

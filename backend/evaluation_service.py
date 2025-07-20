@@ -1,6 +1,6 @@
 import os
 from openai import OpenAI
-from .models import GdprParagraphList
+from models import GdprParagraphList
 
 from dotenv import load_dotenv
 load_dotenv()
