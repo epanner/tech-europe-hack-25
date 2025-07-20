@@ -104,7 +104,6 @@ We utilize comprehensive GDPR enforcement data from enforcementtracker.com, enha
 
 - OpenAI GPT-4: Advanced language understanding and legal analysis
 - Weaviate: Vector database for semantic search of legal precedents
-- ai|coustics: AI-powered audio enhancement for voice input
 
 **🎵 Voice & Audio**
 
