@@ -75,6 +75,8 @@ const Index = () => {
               onAnalysisComplete={handleAnalysisComplete} 
               initialDescription={conversationSummary}
               classification={caseClassification}
+              setSimilarCases={setSimilarCases}
+              similarCases={similarCases}
             />
           </div>
 

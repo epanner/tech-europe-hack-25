@@ -106,7 +106,7 @@ Status: Ready for detailed GDPR compliance analysis.`;
 
       if (shouldUseClassification) {
         // Use the classification data to call the breach impact API
-        const response = await fetch('http://localhost:5000/api/predict-breach-impact', {
+        const response = await fetch('http://127.0.0.1:5000/api/predict-breach-impact', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
