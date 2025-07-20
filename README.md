@@ -30,16 +30,6 @@ Traditional approaches require manual research through countless legal documents
 
 ## 🏆 Hackathon Tracks
 
-**🎙️ Track 2: Voice Agents powered by telli**
-
-We're building a sophisticated voice-controlled AI agent that autonomously handles complex GDPR compliance assessments from start to finish. Our agent:
-
-- Voice Interface: Natural language understanding for describing data breach scenarios
-- Task Execution: Complete end-to-end GDPR violation assessment workflows
-- Integration: Connects with multiple APIs (OpenAI, Weaviate, ElevenLabs, ai|coustics)
-- Autonomy: Makes intelligent decisions, handles complex legal analysis, and guides users through compliance assessment
-
-
 **🌟 Track 1: Open Innovation**
 Our project represents a novel approach to legal-tech innovation, combining:
 
@@ -47,14 +37,6 @@ Our project represents a novel approach to legal-tech innovation, combining:
 - Precedent-based risk assessment using vector databases
 - Multi-modal agent orchestration for complex legal workflows
 - Real-world impact in the critical domain of data protection compliance
-
-**🔊 Side Challenge: Best Use of ai|coustics**
-
-We leverage ai|coustics' powerful AI-Enhancement API to:
-
-- Clean and enhance voice input from users describing breach scenarios
-- Improve transcription accuracy for legal terminology and technical descriptions
-- Ensure reliable voice interaction in professional legal environments
 
 
 ## 🔄 Agentic Flow
