@@ -168,7 +168,29 @@ We utilize comprehensive GDPR enforcement data from enforcementtracker.com, enha
 - Node.js 18+
 - API Keys for: OpenAI, ElevenLabs, Weaviate, ai|coustics, weaviate database
 
-> TODO: SETUP INSTRUCTIONS
+
+### 🚀 Start up
+**Starting the backend api**
+
+In the root folder of the project<br>
+<code>cd backend</code><br>
+<code>uvicorn main:app --reload --port 5000</code>
+
+**Starting the main application**
+
+In the root folder of the project<br>
+<code>cd frontend</code><br>
+<code>npm run dev</code>
+
+
+
+
+
+
+
+
+
+
 
 ### 🎤 Usage
 Voice Interaction Flow
