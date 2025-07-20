@@ -175,7 +175,7 @@ async def evaluate(request: Request):
     if not data or 'case_description' not in data:
         return JSONResponse(status_code=400, content={"error": "Missing 'case_description' in request body"})
     case_description = data['case_description']
-    evaluation_result = evaluation_service.get_evaluation(case_description)
+    evaluation_result = await evaluation_service.get_evaluation(case_description)
     if evaluation_result:
         try:
             return JSONResponse(content=evaluation_result.model_dump())

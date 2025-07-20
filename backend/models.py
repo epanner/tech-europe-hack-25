@@ -29,3 +29,7 @@ class GdprParagraphList(BaseModel):
     as a response from an API or for validation of a JSON array.
     """
     paragraphs: List[GdprParagraph] = Field(..., description="A list of GDPR paragraph objects.")
+
+class CaseDescription(BaseModel):
+    is_case_description: bool
+    reasoning: str
