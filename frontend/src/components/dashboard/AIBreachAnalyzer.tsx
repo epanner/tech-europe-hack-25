@@ -16,9 +16,10 @@ interface AIBreachAnalyzerProps {
   }) => void;
   initialDescription?: string;
   setConversationSummary: (summary: string) => void;
+  classification?: any;
 }
 
-export function AIBreachAnalyzer({ onAnalysisComplete, initialDescription = "", setConversationSummary }: AIBreachAnalyzerProps) {
+export function AIBreachAnalyzer({ onAnalysisComplete, initialDescription = "", setConversationSummary, classification }: AIBreachAnalyzerProps) {
   const [description, setDescription] = useState(initialDescription);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [caseSummary, setCaseSummary] = useState("");
@@ -28,9 +29,39 @@ export function AIBreachAnalyzer({ onAnalysisComplete, initialDescription = "", 
   useEffect(() => {
     if (initialDescription.trim()) {
       setCaseSummary(initialDescription);
-      setTimeout(() => analyzeBreachCase(), 1000);
+      // Don't auto-analyze if this is from voice agent (contains "GDPR CLASSIFICATION:")
+      if (!initialDescription.includes("GDPR CLASSIFICATION:")) {
+        setTimeout(() => analyzeBreachCase(), 1000);
+      } else {
+        // If it contains classification, show a completion message
+        toast.success("Voice case gathering completed! Case summary loaded.");
+      }
     }
   }, [initialDescription]);
+
+  // Display classification when available and no case summary yet
+  useEffect(() => {
+    if (classification && !caseSummary) {
+      const classificationSummary = `Case Classification Complete:
+
+Case Description: ${classification.case_description || 'Based on voice conversation'}
+
+GDPR Classification:
+• Lawfulness of Processing: ${formatClassificationLabel(classification.lawfulness_of_processing)}
+• Data Subject Rights Compliance: ${formatClassificationLabel(classification.data_subject_rights_compliance)}
+• Risk Management and Safeguards: ${formatClassificationLabel(classification.risk_management_and_safeguards)}
+• Accountability and Governance: ${formatClassificationLabel(classification.accountability_and_governance)}
+
+Status: Ready for detailed GDPR compliance analysis.`;
+      
+      setCaseSummary(classificationSummary);
+      setConversationSummary(classificationSummary);
+    }
+  }, [classification, caseSummary, setConversationSummary]);
+
+  const formatClassificationLabel = (value: string) => {
+    return value ? value.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Not specified';
+  };
 
   const analyzeBreachCase = async () => {
     if (!description.trim()) {
@@ -181,15 +212,23 @@ export function AIBreachAnalyzer({ onAnalysisComplete, initialDescription = "", 
           <>
             {/* Case Summary Display */}
             <div className="bg-muted/50 rounded-lg p-6 border border-border">
-              <h3 className="text-lg font-medium text-foreground mb-4">Case Summary</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-foreground">Case Summary</h3>
+                {caseSummary.includes("GDPR CLASSIFICATION:") && (
+                  <div className="flex items-center gap-2 text-sm text-green-600">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="font-medium">Voice Agent Complete</span>
+                  </div>
+                )}
+              </div>
               <div className="text-foreground/90 text-sm leading-relaxed space-y-2">
                 {caseSummary.split('\n').map((paragraph, index) => (
                   <p key={index} className="text-sm leading-relaxed">
-                    {paragraph.split(/(\d+(?:,\d{3})*(?:\.\d+)?|\b(?:GDPR|personal data|sensitive data|data breach|notification|consent|legal basis|encryption|deletion|72 hours|international transfer|DPA|fine|penalty|compliance|violation|risk|HIGH|MEDIUM|LOW)\b)/gi).map((part, partIndex) => {
+                    {paragraph.split(/(\d+(?:,\d{3})*(?:\.\d+)?|\b(?:GDPR|personal data|sensitive data|data breach|notification|consent|legal basis|encryption|deletion|72 hours|international transfer|DPA|fine|penalty|compliance|violation|risk|HIGH|MEDIUM|LOW|Lawfulness of Processing|Data Subject Rights|Risk Management|Accountability)\b)/gi).map((part, partIndex) => {
                       if (/^\d+(?:,\d{3})*(?:\.\d+)?$/.test(part)) {
                         return <span key={partIndex} className="font-bold text-primary">{part}</span>;
                       }
-                      if (/^(?:GDPR|personal data|sensitive data|data breach|notification|consent|legal basis|encryption|deletion|72 hours|international transfer|DPA|fine|penalty|compliance|violation|risk|HIGH|MEDIUM|LOW)$/i.test(part)) {
+                      if (/^(?:GDPR|personal data|sensitive data|data breach|notification|consent|legal basis|encryption|deletion|72 hours|international transfer|DPA|fine|penalty|compliance|violation|risk|HIGH|MEDIUM|LOW|Lawfulness of Processing|Data Subject Rights|Risk Management|Accountability)$/i.test(part)) {
                         return <span key={partIndex} className="font-semibold text-primary bg-primary/10 px-1 rounded">{part}</span>;
                       }
                       return part;

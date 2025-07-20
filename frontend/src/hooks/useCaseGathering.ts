@@ -36,7 +36,30 @@ export const useCaseGathering = () => {
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Function to check the latest classification from the backend
+  const checkClassificationStatus = useCallback(async (conversationId: string) => {
+    try {
+      const response = await fetch(`http://127.0.0.1:5000/api/case-gathering/${conversationId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.classification) {
+          setState(prev => ({
+            ...prev,
+            classification: data.classification,
+            isReadyToClassify: data.conversation_complete
+          }));
+          return data.classification;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to check classification status:', error);
+    }
+    return null;
+  }, []);
+
   const startConversation = useCallback(async (initialDescription?: string) => {
+    let currentConversationId: string | null = null;
+    
     try {
       setState(prev => ({
         ...prev,
@@ -61,7 +84,7 @@ export const useCaseGathering = () => {
 
       abortControllerRef.current = new AbortController();
 
-      const response = await fetch('http://127.0.0.1:8001/api/start-case-gathering', {
+      const response = await fetch('http://127.0.0.1:5000/api/start-case-gathering', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -103,6 +126,7 @@ export const useCaseGathering = () => {
               
               switch (parsed.type) {
                 case 'conversation_id':
+                  currentConversationId = parsed.data;
                   setState(prev => ({
                     ...prev,
                     conversationId: parsed.data
@@ -169,13 +193,22 @@ export const useCaseGathering = () => {
           isStreaming: false
         }));
       }
+    } finally {
+      // Always check classification status at the end of startConversation
+      setTimeout(async () => {
+        if (currentConversationId) {
+          await checkClassificationStatus(currentConversationId);
+        }
+      }, 100);
     }
-  }, []);
+  }, [checkClassificationStatus]);
 
   const sendMessage = useCallback(async (message: string) => {
     if (!state.conversationId || state.isStreaming) {
       return;
     }
+
+    const currentConversationId = state.conversationId;
 
     try {
       setState(prev => ({
@@ -195,13 +228,13 @@ export const useCaseGathering = () => {
 
       abortControllerRef.current = new AbortController();
 
-      const response = await fetch('http://127.0.0.1:8001/api/continue-case-gathering', {
+      const response = await fetch('http://127.0.0.1:5000/api/continue-case-gathering', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          conversation_id: state.conversationId,
+          conversation_id: currentConversationId,
           user_response: message,
         }),
         signal: abortControllerRef.current.signal,
@@ -297,14 +330,21 @@ export const useCaseGathering = () => {
           isStreaming: false
         }));
       }
+    } finally {
+      // Always check classification status at the end of sendMessage
+      setTimeout(async () => {
+        if (currentConversationId) {
+          await checkClassificationStatus(currentConversationId);
+        }
+      }, 100);
     }
-  }, [state.conversationId, state.isStreaming]);
+  }, [state.conversationId, state.isStreaming, checkClassificationStatus]);
 
   const endConversation = useCallback(async () => {
     if (!state.conversationId) return;
 
     try {
-      await fetch(`http://127.0.0.1:8001/api/case-gathering/${state.conversationId}`, {
+      await fetch(`http://127.0.0.1:5000/api/case-gathering/${state.conversationId}`, {
         method: 'DELETE',
       });
     } catch (error) {
@@ -346,6 +386,7 @@ export const useCaseGathering = () => {
     sendMessage,
     endConversation,
     stopStreaming,
+    checkClassificationStatus,
   };
 };
 

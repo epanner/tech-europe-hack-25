@@ -147,17 +147,17 @@ Your goal is to gather information through natural conversation to classify a GD
                 conversation_complete=True
             )
             
-            return f"""Perfect! I've classified your case as follows:
+            return f"""**Perfect! I've classified your case as follows:**
 
 **Case Description:** {case_description}
 
-**Classification:**
+**Classification Complete:**
 - **Lawfulness of Processing:** {lawfulness_of_processing}
 - **Data Subject Rights Compliance:** {data_subject_rights_compliance}  
 - **Risk Management and Safeguards:** {risk_management_and_safeguards}
 - **Accountability and Governance:** {accountability_and_governance}
 
-This classification will help with subsequent analysis and fine prediction. The case gathering is now complete."""
+This classification will help with subsequent analysis and fine prediction. The case gathering is now complete and you will be redirected to the case analysis dashboard."""
         else:
             return "I need to gather more information. Please provide additional details about the incident so I can properly classify it."
 
@@ -185,8 +185,7 @@ This classification will help with subsequent analysis and fine prediction. The 
             )
 
             response_text = ""
-            tool_call_id = None
-            tool_call_args = ""
+            tool_calls = {}  # Store tool calls by ID
             
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
@@ -197,24 +196,57 @@ This classification will help with subsequent analysis and fine prediction. The 
                 # Handle tool calls - they might come in multiple chunks
                 if chunk.choices[0].delta.tool_calls:
                     for tool_call in chunk.choices[0].delta.tool_calls:
-                        if tool_call.function:
-                            if tool_call.function.name == "finalize_classification":
-                                tool_call_id = tool_call.id
-                                # Arguments might come in chunks, so accumulate them
+                        if tool_call.id:
+                            if tool_call.id not in tool_calls:
+                                tool_calls[tool_call.id] = {
+                                    "name": "",
+                                    "arguments": ""
+                                }
+                            
+                            if tool_call.function:
+                                if tool_call.function.name:
+                                    tool_calls[tool_call.id]["name"] = tool_call.function.name
                                 if tool_call.function.arguments:
-                                    tool_call_args += tool_call.function.arguments
+                                    tool_calls[tool_call.id]["arguments"] += tool_call.function.arguments
                 
-                # Check if we have a complete tool call
-                if tool_call_id and chunk.choices[0].finish_reason == "tool_calls":
+                # Check if we have a complete tool call when the stream finishes
+                if chunk.choices[0].finish_reason == "tool_calls":
+                    print(f"[START] Tool calls detected: {tool_calls}")  # Debug logging
+                    for tool_call_id, tool_data in tool_calls.items():
+                        print(f"[START] Processing tool call {tool_call_id}: {tool_data}")  # Debug logging
+                        if tool_data["name"] == "finalize_classification" and tool_data["arguments"]:
+                            try:
+                                print(f"[START] Attempting to parse: {tool_data['arguments']}")  # Debug logging
+                                args = json.loads(tool_data["arguments"])
+                                self.current_breach_info = BreachInfo(**args, conversation_complete=True)
+                                yield json.dumps({
+                                    "type": "classification_complete", 
+                                    "data": self.current_breach_info.model_dump()
+                                })
+                            except json.JSONDecodeError as e:
+                                print(f"[START] JSON decode error: {e}")  # Debug logging
+                                yield json.dumps({"type": "error", "data": f"JSON parsing error: {str(e)} - Args: '{tool_data['arguments']}'"})
+                            except Exception as e:
+                                print(f"[START] Classification error: {e}")  # Debug logging
+                                yield json.dumps({"type": "error", "data": f"Classification error: {str(e)} - Args: '{tool_data['arguments']}'"})
+                        elif tool_data["name"] == "finalize_classification" and not tool_data["arguments"]:
+                            print("[START] Tool call detected but no arguments received")  # Debug logging
+                            yield json.dumps({"type": "error", "data": "Tool call detected but no arguments received"})
+            
+            # Final check for any accumulated tool calls
+            for tool_call_id, tool_data in tool_calls.items():
+                if tool_data["name"] == "finalize_classification" and tool_data["arguments"] and not self.current_breach_info.conversation_complete:
                     try:
-                        args = json.loads(tool_call_args)
+                        print(f"[START-FINAL] Final attempt to parse: {tool_data['arguments']}")  # Debug logging
+                        args = json.loads(tool_data["arguments"])
                         self.current_breach_info = BreachInfo(**args, conversation_complete=True)
                         yield json.dumps({
                             "type": "classification_complete", 
                             "data": self.current_breach_info.model_dump()
                         })
                     except Exception as e:
-                        yield json.dumps({"type": "error", "data": f"Classification error: {str(e)} - Args: {tool_call_args}"})
+                        print(f"[START-FINAL] Final parse error: {e}")  # Debug logging
+                        yield json.dumps({"type": "error", "data": f"Final classification error: {str(e)} - Args: '{tool_data['arguments']}'"})
                 
         except Exception as e:
             yield json.dumps({"type": "error", "data": f"Error: {str(e)}"})
@@ -232,16 +264,17 @@ This classification will help with subsequent analysis and fine prediction. The 
         
         # Force classification after 4 user exchanges (including the current one we just added)
         if iteration_count >= 4:
-            # Extract information from conversation history for forced classification
-            conversation_text = "\n".join([f"{m['role']}: {m['content']}" for m in messages[-8:]])  # Last 8 messages for context
-            
-            forced_classification = self._make_forced_classification(conversation_text)
-            self.current_breach_info = BreachInfo(**forced_classification, conversation_complete=True)
-            
-            yield json.dumps({"type": "message", "data": "Based on our conversation, I now have enough information to classify your GDPR breach case. Let me provide the classification:\n\n"})
-            
-            # Format the classification response
-            classification_text = f"""**Final Classification:**
+            try:
+                # Extract information from conversation history for forced classification
+                conversation_text = "\n".join([f"{m['role']}: {m['content']}" for m in messages[-8:]])  # Last 8 messages for context
+                
+                forced_classification = self._make_forced_classification(conversation_text)
+                self.current_breach_info = BreachInfo(**forced_classification, conversation_complete=True)
+                
+                yield json.dumps({"type": "message", "data": "Based on our conversation, I now have enough information to classify your GDPR breach case. Let me provide the classification:\n\n"})
+                
+                # Format the classification response
+                classification_text = f"""**Final Classification Complete:**
 
 **Lawfulness of Processing:** {forced_classification['lawfulness_of_processing']}
 **Data Subject Rights Compliance:** {forced_classification['data_subject_rights_compliance']}
@@ -250,14 +283,17 @@ This classification will help with subsequent analysis and fine prediction. The 
 
 **Case Summary:** {forced_classification['case_description']}
 
-This classification is based on the information you've provided during our conversation. The case gathering is now complete."""
-            
-            yield json.dumps({"type": "message", "data": classification_text})
-            yield json.dumps({
-                "type": "classification_complete", 
-                "data": self.current_breach_info.model_dump()
-            })
-            return
+This classification is based on the information provided during our conversation. The case gathering is now complete and you will be redirected to the case analysis dashboard."""
+                
+                yield json.dumps({"type": "message", "data": classification_text})
+                yield json.dumps({
+                    "type": "classification_complete", 
+                    "data": self.current_breach_info.model_dump()
+                })
+                return
+            except Exception as e:
+                yield json.dumps({"type": "error", "data": f"Forced classification error: {str(e)}"})
+                return
         
         try:
             stream = await self.client.chat.completions.create(
@@ -269,8 +305,7 @@ This classification is based on the information you've provided during our conve
             )
 
             response_text = ""
-            tool_call_id = None
-            tool_call_args = ""
+            tool_calls = {}  # Store tool calls by ID
             
             async for chunk in stream:
                 if chunk.choices[0].delta.content:
@@ -281,24 +316,57 @@ This classification is based on the information you've provided during our conve
                 # Handle tool calls - they might come in multiple chunks
                 if chunk.choices[0].delta.tool_calls:
                     for tool_call in chunk.choices[0].delta.tool_calls:
-                        if tool_call.function:
-                            if tool_call.function.name == "finalize_classification":
-                                tool_call_id = tool_call.id
-                                # Arguments might come in chunks, so accumulate them
+                        if tool_call.id:
+                            if tool_call.id not in tool_calls:
+                                tool_calls[tool_call.id] = {
+                                    "name": "",
+                                    "arguments": ""
+                                }
+                            
+                            if tool_call.function:
+                                if tool_call.function.name:
+                                    tool_calls[tool_call.id]["name"] = tool_call.function.name
                                 if tool_call.function.arguments:
-                                    tool_call_args += tool_call.function.arguments
+                                    tool_calls[tool_call.id]["arguments"] += tool_call.function.arguments
                 
-                # Check if we have a complete tool call
-                if tool_call_id and chunk.choices[0].finish_reason == "tool_calls":
+                # Check if we have a complete tool call when the stream finishes
+                if chunk.choices[0].finish_reason == "tool_calls":
+                    print(f"[CONTINUE] Tool calls detected: {tool_calls}")  # Debug logging
+                    for tool_call_id, tool_data in tool_calls.items():
+                        print(f"[CONTINUE] Processing tool call {tool_call_id}: {tool_data}")  # Debug logging
+                        if tool_data["name"] == "finalize_classification" and tool_data["arguments"]:
+                            try:
+                                print(f"[CONTINUE] Attempting to parse: {tool_data['arguments']}")  # Debug logging
+                                args = json.loads(tool_data["arguments"])
+                                self.current_breach_info = BreachInfo(**args, conversation_complete=True)
+                                yield json.dumps({
+                                    "type": "classification_complete", 
+                                    "data": self.current_breach_info.model_dump()
+                                })
+                            except json.JSONDecodeError as e:
+                                print(f"[CONTINUE] JSON decode error: {e}")  # Debug logging
+                                yield json.dumps({"type": "error", "data": f"JSON parsing error: {str(e)} - Args: '{tool_data['arguments']}'"})
+                            except Exception as e:
+                                print(f"[CONTINUE] Classification error: {e}")  # Debug logging
+                                yield json.dumps({"type": "error", "data": f"Classification error: {str(e)} - Args: '{tool_data['arguments']}'"})
+                        elif tool_data["name"] == "finalize_classification" and not tool_data["arguments"]:
+                            print("[CONTINUE] Tool call detected but no arguments received")  # Debug logging
+                            yield json.dumps({"type": "error", "data": "Tool call detected but no arguments received"})
+            
+            # Final check for any accumulated tool calls
+            for tool_call_id, tool_data in tool_calls.items():
+                if tool_data["name"] == "finalize_classification" and tool_data["arguments"] and not self.current_breach_info.conversation_complete:
                     try:
-                        args = json.loads(tool_call_args)
+                        print(f"[CONTINUE-FINAL] Final attempt to parse: {tool_data['arguments']}")  # Debug logging
+                        args = json.loads(tool_data["arguments"])
                         self.current_breach_info = BreachInfo(**args, conversation_complete=True)
                         yield json.dumps({
                             "type": "classification_complete", 
                             "data": self.current_breach_info.model_dump()
                         })
                     except Exception as e:
-                        yield json.dumps({"type": "error", "data": f"Classification error: {str(e)} - Args: {tool_call_args}"})
+                        print(f"[CONTINUE-FINAL] Final parse error: {e}")  # Debug logging
+                        yield json.dumps({"type": "error", "data": f"Final classification error: {str(e)} - Args: '{tool_data['arguments']}'"})
             
             # Add assistant response to conversation history
             if response_text:
@@ -324,11 +392,11 @@ This classification is based on the information you've provided during our conve
         context = f"\n\n**Current Status:** This is exchange {iteration_count}/{max_iterations} maximum."
         
         if iteration_count >= max_iterations:
-            context += " **IMPORTANT: This is the final exchange. You MUST call finalize_classification now with your best assessment based on available information.**"
+            context += " **IMPORTANT: This is the final exchange. You MUST call the finalize_classification function now with your best assessment based on available information. Do not ask more questions.**"
         elif iteration_count == max_iterations - 1:
-            context += " **WARNING: This is the second-to-last exchange. Prepare to classify after the next user response.**"
+            context += " **WARNING: This is the second-to-last exchange. After the user's next response, you must classify immediately.**"
         else:
-            context += " Gather key information efficiently."
+            context += " Gather key information efficiently. Remember to call finalize_classification when you have sufficient information."
             
         return self.system_instructions + context
     

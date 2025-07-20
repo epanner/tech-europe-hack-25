@@ -24,6 +24,7 @@ case_gathering_agent = CaseGatheringAgent(api_key=os.getenv("OPENAI_API_KEY"))
 # Store active conversations (in production, use Redis or database)
 active_conversations: Dict[str, List[Dict[str, str]]] = {}
 conversation_iterations: Dict[str, int] = {}  # Track iteration count per conversation
+conversation_classifications: Dict[str, Any] = {}  # Store classifications per conversation
 
 # Allow all CORS
 app.add_middleware(
@@ -75,6 +76,14 @@ async def start_case_gathering(request: StartConversationRequest):
         yield f"data: {json.dumps({'type': 'conversation_id', 'data': conversation_id})}\n\n"
         
         async for chunk in case_gathering_agent.start_conversation(request.initial_description):
+            # Store classification if received
+            try:
+                chunk_data = json.loads(chunk)
+                if chunk_data.get('type') == 'classification_complete' and chunk_data.get('data'):
+                    conversation_classifications[conversation_id] = chunk_data['data']
+            except:
+                pass  # Ignore parsing errors for non-JSON chunks
+                
             yield f"data: {chunk}\n\n"
         
         yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
@@ -116,6 +125,14 @@ async def continue_case_gathering(request: ContinueConversationRequest):
     
     async def generate_stream():
         async for chunk in case_gathering_agent.continue_conversation(messages, request.user_response):
+            # Store classification if received
+            try:
+                chunk_data = json.loads(chunk)
+                if chunk_data.get('type') == 'classification_complete' and chunk_data.get('data'):
+                    conversation_classifications[request.conversation_id] = chunk_data['data']
+            except:
+                pass  # Ignore parsing errors for non-JSON chunks
+                
             yield f"data: {chunk}\n\n"
         
         yield f"data: {json.dumps({'type': 'stream_end'})}\n\n"
@@ -139,6 +156,8 @@ async def end_case_gathering(conversation_id: str):
         del active_conversations[conversation_id]
         if conversation_id in conversation_iterations:
             del conversation_iterations[conversation_id]
+        if conversation_id in conversation_classifications:
+            del conversation_classifications[conversation_id]
         return JSONResponse(content={"message": "Conversation ended successfully"})
     else:
         return JSONResponse(
@@ -173,8 +192,8 @@ async def get_case_gathering_status(conversation_id: str):
             content={"error": "Conversation not found"}
         )
     
-    # Get current classification if available
-    current_classification = case_gathering_agent.get_current_classification()
+    # Get classification for this specific conversation
+    current_classification = conversation_classifications.get(conversation_id)
     
     response_data = {
         "conversation_id": conversation_id,
@@ -183,7 +202,7 @@ async def get_case_gathering_status(conversation_id: str):
     }
     
     if current_classification:
-        response_data["classification"] = current_classification.model_dump()
+        response_data["classification"] = current_classification
     
     return JSONResponse(content=response_data)
 
