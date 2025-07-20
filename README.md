@@ -90,7 +90,6 @@ flowchart TD
 
     
     style A fill:#e1f5fe
-    style V fill:#e8f5e8
     style I fill:#fff3e0
     style J fill:#f3e5f5
 
