@@ -15,7 +15,7 @@ import os
 # Add the project root to the path so we can import the workflow
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from breach_impact_workflow import predict_breach_impact
+from backend.breach_impact_workflow import predict_breach_impact
 
 router = APIRouter(prefix="/api", tags=["breach-prediction"])
 

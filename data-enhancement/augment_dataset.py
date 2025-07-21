@@ -15,7 +15,7 @@ class GDPRViolationClassification(BaseModel):
     accountability_and_governance: str
 
 # === SETTINGS ===
-openai.api_key = os.getenv("OPENAI_KEY")
+openai.api_key = os.getenv("OPENAI_API_KEY")
 
 
 # === STEP 1: Read PDF text ===

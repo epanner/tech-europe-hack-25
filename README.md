@@ -43,8 +43,7 @@ Our project represents a novel approach to legal-tech innovation, combining:
 
 ```mermaid
 flowchart TD
-    A[🎤 Voice Input] --> B[🔊 ai&#124;coustics Enhancement]
-    B --> C[📝 Speech Recognition]
+    A[🎤 Voice Input] --> C[📝 Speech Recognition]
     C --> D[🤖 Main Agent Controller]
     
     D --> E[👋 Onboarding Flow]
@@ -114,6 +113,7 @@ We utilize comprehensive GDPR enforcement data from enforcementtracker.com, enha
 - SQLite: Structured storage for GDPR fines and case metadata
 - Python: Core backend processing and agent orchestration
 - Pandas: Data manipulation and analysis
+- FastAPI: High-performance API for backend services
 
 **🖥️ Frontend & Interface**
 
@@ -147,7 +147,7 @@ We utilize comprehensive GDPR enforcement data from enforcementtracker.com, enha
 
 - Python 3.10+
 - Node.js 18+
-- API Keys for: OpenAI, ElevenLabs, Weaviate, ai|coustics, weaviate database
+- API Keys for: OpenAI, ElevenLabs, Weaviate (Database Connection Key)
 
 
 ### 🚀 Start up
@@ -162,13 +162,6 @@ In the root folder of the project<br>
 In the root folder of the project<br>
 <code>cd frontend</code><br>
 <code>npm run dev</code>
-
-
-
-
-
-
-
 
 
 

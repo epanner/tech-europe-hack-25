@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from typing import List
 import asyncio
 
-from breach_impact_workflow import predict_breach_impact
+from backend.breach_impact_workflow import predict_breach_impact
 
 app = FastAPI(title="GDPR Breach Impact Predictor API", version="1.0.0")
 

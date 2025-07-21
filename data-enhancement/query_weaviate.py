@@ -8,7 +8,7 @@ if __name__ == "__main__":
     weaviate_client = weaviate.connect_to_weaviate_cloud(
                         cluster_url=os.getenv("WEAVIATE_CLUSTER_URL"),
                         auth_credentials=Auth.api_key(os.getenv("WEAVIATE_API_KEY")),
-                        headers={'X-OpenAI-Api-key': os.getenv("OPENAI_KEY")},
+                        headers={'X-OpenAI-Api-key': os.getenv("OPENAI_API_KEY")},
                     )
 
     precedent = weaviate_client.collections.get("Precedent")

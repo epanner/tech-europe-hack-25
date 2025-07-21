@@ -278,7 +278,7 @@ async def predict_breach_impact_endpoint(request: Request):
     """Predict GDPR breach impact using LangGraph workflow"""
     try:
         # Import here to avoid issues if workflow dependencies aren't available
-        from breach_impact_workflow import predict_breach_impact
+        from backend.breach_impact_workflow import predict_breach_impact
         
         data = await request.json()
         

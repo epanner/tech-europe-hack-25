@@ -53,7 +53,7 @@ def main():
     query = "SELECT * FROM fines"
     df = pd.read_sql_query(query, connect_obj)
     
-    openai_client = OpenAI(api_key=os.getenv("OPENAI_KEY"))
+    openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     weaviate_client = weaviate.connect_to_weaviate_cloud(
                         cluster_url=os.getenv("WEAVIATE_CLUSTER_URL"),
                         auth_credentials=Auth.api_key(os.getenv("WEAVIATE_API_KEY"))

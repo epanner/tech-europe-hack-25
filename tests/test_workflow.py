@@ -7,8 +7,8 @@ This script tests both the LangGraph workflow and the FastAPI integration
 import asyncio
 import requests
 import json
-from breach_impact_workflow import test_workflow
-from breach_impact_api import app
+from backend.breach_impact_workflow import test_workflow
+from backend.breach_impact_api import app
 
 def test_langgraph_workflow():
     """Test the LangGraph workflow directly"""

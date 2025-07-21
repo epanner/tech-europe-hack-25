@@ -32,7 +32,7 @@ def get_or_create_agent(session_id: str) -> OpenAIGDPRReActAgentSync:
     """Get existing agent or create new one for session"""
     if session_id not in agent_sessions:
         agent_sessions[session_id] = OpenAIGDPRReActAgentSync(
-            api_key=os.getenv("OPENAI_KEY"),
+            api_key=os.getenv("OPENAI_API_KEY"),
             model="gpt-4"
         )
     return agent_sessions[session_id]
